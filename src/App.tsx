@@ -1,37 +1,86 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import './App.css';
 import AudioRecorder from './components/AudioRecorder';
 import GardenScene from './components/GardenScene';
 import { AudioAnalyzer, AudioAnalysisResult } from './utils/AudioAnalyzer';
 import { GardenGenerator, SoundGarden } from './utils/GardenGenerator';
+import GameState, { Achievement } from './utils/GameState';
 
 function App() {
-  const VERSION = 'v1.0.2';
+  const VERSION = 'v2.0.0';
+  const gameState = useRef(GameState.getInstance()).current;
+  
+  // 游戏状态
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [garden, setGarden] = useState<SoundGarden | null>(null);
-  const [analysisResult, setAnalysisResult] = useState<AudioAnalysisResult | null>(null);
+  const [_analysisResult, setAnalysisResult] = useState<AudioAnalysisResult | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [currentVolume, setCurrentVolume] = useState(0);
   const [currentFrequency, setCurrentFrequency] = useState(500);
   const [error, setError] = useState<string | null>(null);
   const [showInstructions, setShowInstructions] = useState(true);
+  
+  // 游戏界面状态
+  const [activeTab, setActiveTab] = useState<'garden' | 'collection' | 'achievements'>('garden');
+  const [showGamePanel, setShowGamePanel] = useState(false);
+  const [unlockedAchievements, setUnlockedAchievements] = useState<Achievement[]>([]);
+  const [newAchievement, setNewAchievement] = useState<Achievement | null>(null);
+  
+  // 视觉模式
+  const [isNightMode, setIsNightMode] = useState(false);
+  const [weather, setWeather] = useState<'clear' | 'rain' | 'wind'>('clear');
+  
+  // 实时生成
+  const recordingStartTime = useRef<number>(0);
+  const plantGenerationInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // 检查新成就
+  useEffect(() => {
+    const checkAchievements = () => {
+      const newlyUnlocked = gameState.getUnlockedAchievements().filter(
+        a => !unlockedAchievements.find(ua => ua.id === a.id)
+      );
+      
+      if (newlyUnlocked.length > 0) {
+        setNewAchievement(newlyUnlocked[0]);
+        setUnlockedAchievements(gameState.getUnlockedAchievements());
+        setTimeout(() => setNewAchievement(null), 3000);
+      }
+    };
+    
+    const interval = setInterval(checkAchievements, 1000);
+    return () => clearInterval(interval);
+  }, [unlockedAchievements, gameState]);
+
+  // 开始录音
   const handleRecordingStart = useCallback(() => {
     setIsRecording(true);
     setError(null);
     setShowInstructions(false);
+    recordingStartTime.current = Date.now();
   }, []);
 
+  // 停止录音
   const handleRecordingStop = useCallback(() => {
     setIsRecording(false);
     setCurrentVolume(0);
     setCurrentFrequency(500);
+    
+    if (plantGenerationInterval.current) {
+      clearInterval(plantGenerationInterval.current);
+      plantGenerationInterval.current = null;
+    }
   }, []);
 
-  const handleVolumeChange = useCallback((volume: number) => {
+  // 音量变化
+  const handleVolumeChange = useCallback((volume: number, frequency?: number) => {
     setCurrentVolume(volume);
+    if (frequency) {
+      setCurrentFrequency(frequency);
+    }
   }, []);
 
+  // 录音完成
   const handleRecordingComplete = useCallback(async (blob: Blob) => {
     setIsAnalyzing(true);
     setError(null);
@@ -48,13 +97,35 @@ function App() {
       setAnalysisResult(result);
 
       const generator = new GardenGenerator({
-        gardenRadius: 20,
-        maxPlants: 50,
+        gardenRadius: 20 + gameState.gardenLevel * 2,
+        maxPlants: 30 + gameState.gardenLevel * 5,
         randomize: true,
       });
 
-      const newGarden = generator.generateGarden(result, 'My Sound Garden');
+      const newGarden = generator.generateGarden(result, `花园 Lv.${gameState.gardenLevel}`);
       setGarden(newGarden);
+      
+      // 更新游戏状态
+      gameState.recordRecording();
+      gameState.stats.totalPlants += newGarden.plants.length;
+      
+      // 解锁植物
+      if (result.pitch) {
+        if (result.pitch > 1000) {
+          gameState.unlockPlant('flower');
+        }
+      }
+      
+      // 夜晚模式成就
+      if (isNightMode) {
+        gameState.unlockAchievement('night_owl');
+        gameState.unlockPlant('moon');
+      }
+      
+      // 雨天成就
+      if (weather === 'rain') {
+        gameState.unlockAchievement('rain_dancer');
+      }
 
     } catch (err) {
       console.error('分析失败:', err);
@@ -62,14 +133,24 @@ function App() {
     } finally {
       setIsAnalyzing(false);
     }
-  }, []);
+  }, [gameState, isNightMode, weather]);
 
+  // 重置
   const handleReset = useCallback(() => {
     setGarden(null);
     setAnalysisResult(null);
     setError(null);
     setShowInstructions(true);
   }, []);
+
+  // 切换天气
+  const toggleWeather = () => {
+    setWeather(prev => {
+      if (prev === 'clear') return 'rain';
+      if (prev === 'rain') return 'wind';
+      return 'clear';
+    });
+  };
 
   const getFrequencyDesc = (freq: number) => {
     if (freq < 250) return { label: '低频', color: '#ef4444', icon: '🍄' };
@@ -80,7 +161,20 @@ function App() {
   const freqInfo = currentFrequency ? getFrequencyDesc(currentFrequency) : null;
 
   return (
-    <div className="app">
+    <div className={`app ${isNightMode ? 'night-mode' : ''} ${weather}`}>
+      {/* 新成就提示 */}
+      {newAchievement && (
+        <div className="achievement-popup">
+          <div className="achievement-content">
+            <span className="achievement-icon">{newAchievement.icon}</span>
+            <div>
+              <h4>解锁成就！</h4>
+              <p>{newAchievement.name}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <header className="app-header">
         <div className="logo">
           <span className="logo-icon">🌸</span>
@@ -88,6 +182,28 @@ function App() {
             <h1>Sound Garden</h1>
             <p>用声音种植属于你的花园</p>
           </div>
+        </div>
+        <div className="header-controls">
+          <button 
+            className={`mode-toggle ${isNightMode ? 'active' : ''}`} 
+            onClick={() => setIsNightMode(!isNightMode)}
+            title={isNightMode ? '切换到白天' : '切换到夜晚'}
+          >
+            {isNightMode ? '🌙' : '☀️'}
+          </button>
+          <button 
+            className="weather-toggle" 
+            onClick={toggleWeather}
+            title="切换天气"
+          >
+            {weather === 'clear' ? '☀️' : weather === 'rain' ? '🌧️' : '💨'}
+          </button>
+          <button 
+            className="game-panel-toggle" 
+            onClick={() => setShowGamePanel(!showGamePanel)}
+          >
+            🎮
+          </button>
         </div>
       </header>
 
@@ -98,6 +214,8 @@ function App() {
             isRecording={isRecording}
             currentVolume={currentVolume}
             currentFrequency={currentFrequency}
+            isNightMode={isNightMode}
+            weather={weather}
           />
 
           {(isRecording || garden) && (
@@ -117,7 +235,98 @@ function App() {
           )}
         </div>
 
-        <div className="control-panel">
+        <div className={`control-panel ${showGamePanel ? 'game-panel-open' : ''}`}>
+          {/* 游戏面板 */}
+          {showGamePanel && (
+            <div className="game-panel">
+              <div className="panel-tabs">
+                <button 
+                  className={activeTab === 'garden' ? 'active' : ''}
+                  onClick={() => setActiveTab('garden')}
+                >
+                  🌱 花园
+                </button>
+                <button 
+                  className={activeTab === 'collection' ? 'active' : ''}
+                  onClick={() => setActiveTab('collection')}
+                >
+                  📚 图鉴
+                </button>
+                <button 
+                  className={activeTab === 'achievements' ? 'active' : ''}
+                  onClick={() => setActiveTab('achievements')}
+                >
+                  🏆 成就
+                </button>
+              </div>
+
+              {activeTab === 'garden' && (
+                <div className="garden-stats">
+                  <div className="level-bar">
+                    <div className="level-info">
+                      <span>花园等级 {gameState.gardenLevel}</span>
+                      <span>{gameState.gardenExp}/{gameState.expToNextLevel} XP</span>
+                    </div>
+                    <div className="exp-bar">
+                      <div 
+                        className="exp-fill" 
+                        style={{ width: `${(gameState.gardenExp / gameState.expToNextLevel) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="quick-stats">
+                    <div className="quick-stat">
+                      <span>🎤</span>
+                      <span>{gameState.stats.totalRecordings} 次录音</span>
+                    </div>
+                    <div className="quick-stat">
+                      <span>🌿</span>
+                      <span>{gameState.stats.totalPlants} 株植物</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'collection' && (
+                <div className="collection-panel">
+                  <h4>🌸 植物图鉴 ({gameState.getUnlockedPlants().length}/{gameState.collections.length})</h4>
+                  <div className="collection-grid">
+                    {gameState.collections.map(plant => (
+                      <div 
+                        key={plant.id} 
+                        className={`collection-item ${plant.unlocked ? 'unlocked' : 'locked'}`}
+                        title={plant.unlocked ? plant.name : plant.unlockCondition}
+                      >
+                        <span className="collection-icon">{plant.unlocked ? plant.icon : '🔒'}</span>
+                        <span className="collection-name">{plant.unlocked ? plant.name : '???'}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'achievements' && (
+                <div className="achievements-panel">
+                  <h4>🏆 成就 ({gameState.getUnlockedAchievements().length}/{gameState.achievements.length})</h4>
+                  <div className="achievements-list">
+                    {gameState.achievements.map(achievement => (
+                      <div 
+                        key={achievement.id} 
+                        className={`achievement-item ${achievement.unlocked ? 'unlocked' : 'locked'}`}
+                      >
+                        <span className="achievement-icon">{achievement.icon}</span>
+                        <div className="achievement-info">
+                          <strong>{achievement.name}</strong>
+                          <span>{achievement.description}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {error && (
             <div className="error-message">
               <span className="error-icon">⚠️</span>
@@ -158,49 +367,6 @@ function App() {
                 </div>
               </div>
 
-              <div className="plant-legend">
-                <h4>🌸 植物图鉴</h4>
-                <div className="legend-item">
-                  <span className="legend-icon">🍄</span>
-                  <div>
-                    <strong>音菇</strong>
-                    <span>低频 (50-250Hz) · 缓慢呼吸</span>
-                  </div>
-                </div>
-                <div className="legend-item">
-                  <span className="legend-icon">🌳</span>
-                  <div>
-                    <strong>音树</strong>
-                    <span>中频 (250-1000Hz) · 随风摇摆</span>
-                  </div>
-                </div>
-                <div className="legend-item">
-                  <span className="legend-icon">✨</span>
-                  <div>
-                    <strong>音塔</strong>
-                    <span>高频 (1000-5000Hz) · 闪烁旋转</span>
-                  </div>
-                </div>
-              </div>
-
-              {analysisResult && (
-                <div className="audio-details">
-                  <h4>🎵 音频分析</h4>
-                  <div className="detail-row">
-                    <span>🔊 音量</span>
-                    <div className="volume-bar">
-                      <div className="volume-fill" style={{ width: `${analysisResult.volume * 100}%` }} />
-                    </div>
-                  </div>
-                  {analysisResult.pitch && (
-                    <div className="detail-row">
-                      <span>🎹 音高</span>
-                      <span>{analysisResult.pitch.toFixed(0)}Hz {analysisResult.note && `(${analysisResult.note})`}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-
               <button className="reset-button" onClick={handleReset}>
                 <span>🔄</span>
                 重新种植
@@ -212,42 +378,27 @@ function App() {
                 <div className="instructions">
                   <div className="instructions-header">
                     <span>🎮</span>
-                    <h3>游戏指南</h3>
+                    <h3>游戏指南 v2.0</h3>
                   </div>
 
                   <div className="guide-section">
                     <h4>🌱 如何种植</h4>
                     <ul>
                       <li>按住录音按钮，发出声音</li>
-                      <li>声音会在圆形花园中"播种"</li>
+                      <li>实时看到植物生长！</li>
+                      <li>音量越大，植物越高</li>
                       <li>不同音高长出不同植物</li>
-                      <li>和谐音符会产生金色连线</li>
                     </ul>
                   </div>
 
                   <div className="guide-section">
-                    <h4>🎵 植物类型</h4>
-                    <div className="guide-item">
-                      <span className="color-dot" style={{ background: '#ef4444' }}></span>
-                      <div>
-                        <strong>低频</strong>
-                        <span>红色音菇 · 低矮宽大</span>
-                      </div>
-                    </div>
-                    <div className="guide-item">
-                      <span className="color-dot" style={{ background: '#f97316' }}></span>
-                      <div>
-                        <strong>中频</strong>
-                        <span>橙色音树 · 随风摇摆</span>
-                      </div>
-                    </div>
-                    <div className="guide-item">
-                      <span className="color-dot" style={{ background: '#3b82f6' }}></span>
-                      <div>
-                        <strong>高频</strong>
-                        <span>蓝色音塔 · 闪烁旋转</span>
-                      </div>
-                    </div>
+                    <h4>🎮 游戏特色</h4>
+                    <ul>
+                      <li>🌙 夜晚模式：植物会发光</li>
+                      <li>🌧️ 天气效果：雨、风影响植物</li>
+                      <li>📚 收集系统：解锁8种植物</li>
+                      <li>🏆 成就系统：完成挑战</li>
+                    </ul>
                   </div>
                 </div>
               )}

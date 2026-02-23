@@ -9,6 +9,8 @@ interface GardenSceneProps {
   isRecording?: boolean;
   currentVolume?: number;
   currentFrequency?: number;
+  isNightMode?: boolean;
+  weather?: 'clear' | 'rain' | 'wind';
 }
 
 // 蘑菇形态 - 低频
