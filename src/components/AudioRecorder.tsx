@@ -60,16 +60,28 @@ export default function AudioRecorder({
   }, [cleanup]);
 
   // 开始录音
-  const startRecording = async () => {
+  const startRecording = useCallback(async () => {
     if (disabled) return;
     
     try {
-      // 获取麦克风权限
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // 获取麦克风权限 - 使用更兼容的配置
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+        }
+      });
       
-      // 创建 AudioContext
-      const audioContext = new AudioContext();
+      // 创建 AudioContext - 兼容 iOS Safari
+      const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const audioContext = new AudioContextClass();
       audioContextRef.current = audioContext;
+      
+      // 如果是 iOS，需要恢复 AudioContext
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+      }
       
       // 创建 AnalyserNode 用于音量可视化
       const analyser = audioContext.createAnalyser();
@@ -81,8 +93,14 @@ export default function AudioRecorder({
       source.connect(analyser);
       sourceRef.current = source;
       
-      // 创建 MediaRecorder
-      const mediaRecorder = new MediaRecorder(stream);
+      // 创建 MediaRecorder - 使用兼容的 MIME 类型
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm') 
+        ? 'audio/webm' 
+        : MediaRecorder.isTypeSupported('audio/mp4') 
+          ? 'audio/mp4' 
+          : 'audio/ogg';
+      
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
       
@@ -93,7 +111,7 @@ export default function AudioRecorder({
       };
       
       mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
         onRecordingComplete?.(audioBlob);
       };
       
@@ -133,12 +151,21 @@ export default function AudioRecorder({
       
     } catch (error) {
       console.error('无法访问麦克风:', error);
-      alert('无法访问麦克风，请检查权限设置');
+      // 更友好的错误提示
+      let errorMsg = '无法访问麦克风';
+      if (error instanceof DOMException) {
+        if (error.name === 'NotAllowedError') {
+          errorMsg = '请允许使用麦克风权限';
+        } else if (error.name === 'NotFoundError') {
+          errorMsg = '未找到麦克风设备';
+        }
+      }
+      alert(errorMsg);
     }
-  };
+  }, [disabled, onRecordingComplete, onRecordingStart, onVolumeChange]);
 
   // 停止录音
-  const stopRecording = () => {
+  const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
     }
@@ -147,7 +174,7 @@ export default function AudioRecorder({
     setVolume(0);
     onVolumeChange?.(0);
     onRecordingStop?.();
-  };
+  }, [cleanup, onRecordingStop, onVolumeChange]);
 
   // 格式化时间
   const formatTime = (seconds: number) => {
@@ -239,9 +266,11 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '12px',
     border: '1px solid #333355',
     transition: 'opacity 0.2s',
+    touchAction: 'manipulation', // 防止双击缩放
+    WebkitTapHighlightColor: 'transparent', // 移除点击高亮
   },
   timeDisplay: {
-    fontSize: '2.5rem',
+    fontSize: 'clamp(1.75rem, 8vw, 2.5rem)', // 响应式字体
     fontWeight: 'bold',
     color: '#fff',
     textAlign: 'center',
@@ -256,22 +285,22 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'flex-end',
     justifyContent: 'center',
-    gap: '4px',
-    height: '80px',
+    gap: 'clamp(2px, 1vw, 4px)', // 响应式间距
+    height: 'clamp(60px, 15vw, 80px)', // 响应式高度
     padding: '10px',
     backgroundColor: '#0a0a0f',
     borderRadius: '8px',
     border: '1px solid #222244',
   },
   volumeBar: {
-    width: '8px',
+    width: 'clamp(4px, 2vw, 8px)', // 响应式宽度
     borderRadius: '2px',
     transition: 'all 0.05s ease',
   },
   volumeText: {
     textAlign: 'center',
     color: '#8888aa',
-    fontSize: '0.875rem',
+    fontSize: 'clamp(0.75rem, 3vw, 0.875rem)', // 响应式字体
     marginTop: '0.5rem',
   },
   controls: {
@@ -285,13 +314,15 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     gap: '8px',
     width: '100%',
-    padding: '1rem 1.5rem',
-    fontSize: '1rem',
+    padding: 'clamp(0.875rem, 4vw, 1rem) clamp(1rem, 5vw, 1.5rem)', // 响应式内边距
+    fontSize: 'clamp(0.9rem, 4vw, 1rem)', // 响应式字体
     fontWeight: '600',
     border: 'none',
     borderRadius: '8px',
     cursor: 'pointer',
     transition: 'all 0.2s ease',
+    WebkitTouchCallout: 'none', // 禁止长按菜单
+    userSelect: 'none',
   },
   startButton: {
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -302,11 +333,11 @@ const styles: Record<string, React.CSSProperties> = {
     color: 'white',
   },
   buttonIcon: {
-    fontSize: '1.2rem',
+    fontSize: 'clamp(1rem, 4vw, 1.2rem)',
   },
   status: {
     textAlign: 'center',
-    fontSize: '0.875rem',
+    fontSize: 'clamp(0.8rem, 3.5vw, 0.875rem)',
   },
   recordingIndicator: {
     display: 'inline-flex',

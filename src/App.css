@@ -535,7 +535,18 @@ body {
   background: rgba(102, 126, 234, 0.5);
 }
 
-/* Responsive */
+/* ========================
+   响应式布局 - 移动端优化
+   ======================== */
+
+/* 平板和桌面端 */
+@media (max-width: 1024px) {
+  .control-panel {
+    width: 320px;
+  }
+}
+
+/* 平板竖屏 */
 @media (max-width: 900px) {
   .app-main {
     flex-direction: column;
@@ -543,34 +554,313 @@ body {
 
   .control-panel {
     width: 100%;
-    max-height: 45vh;
+    max-height: 40vh;
+    min-height: 280px;
     border-left: none;
     border-top: 1px solid rgba(102, 126, 234, 0.2);
+    padding: 1rem;
   }
 
   .scene-container {
-    min-height: 55vh;
+    min-height: 60vh;
+    flex: 1;
+  }
+
+  .floating-info {
+    top: 1rem;
+    left: 1rem;
+  }
+
+  .freq-badge, .garden-badge {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.75rem;
   }
 }
 
+/* 手机端 */
 @media (max-width: 480px) {
+  body {
+    overflow: auto;
+  }
+
+  .app {
+    min-height: 100vh;
+    min-height: 100dvh; /* 动态视口高度 */
+  }
+
   .app-header {
-    padding: 1rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .logo {
+    gap: 0.5rem;
   }
 
   .logo-icon {
-    font-size: 2rem;
+    font-size: 1.75rem;
   }
 
   .logo-text h1 {
-    font-size: 1.4rem;
+    font-size: 1.25rem;
+  }
+
+  .logo-text p {
+    font-size: 0.75rem;
+  }
+
+  .app-main {
+    flex-direction: column;
+  }
+
+  .scene-container {
+    min-height: 50vh;
+    min-height: 50dvh;
+    height: 50vh;
+    height: 50dvh;
+  }
+
+  .floating-info {
+    top: 0.75rem;
+    left: 0.75rem;
+    gap: 0.5rem;
+  }
+
+  .freq-badge, .garden-badge {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.6rem;
   }
 
   .control-panel {
+    max-height: none;
+    min-height: auto;
+    flex: 1;
+    padding: 0.875rem;
+    gap: 0.75rem;
+  }
+
+  /* 花园信息卡片 */
+  .garden-info {
     padding: 1rem;
   }
 
+  .info-header {
+    margin-bottom: 0.875rem;
+    padding-bottom: 0.75rem;
+  }
+
+  .garden-icon {
+    font-size: 1.5rem;
+  }
+
+  .info-header h3 {
+    font-size: 1.1rem;
+  }
+
+  /* 统计卡片 - 横向滚动 */
   .stats-grid {
-    grid-template-columns: 1fr;
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.875rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .stats-grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .stat-card {
+    flex: 0 0 auto;
+    min-width: 80px;
+    padding: 0.75rem;
+  }
+
+  .stat-icon {
+    font-size: 1.25rem;
+  }
+
+  .stat-value {
+    font-size: 1rem;
+  }
+
+  /* 植物图鉴 */
+  .plant-legend {
+    padding: 0.875rem;
+    margin-bottom: 0.875rem;
+  }
+
+  .plant-legend h4 {
+    font-size: 0.8rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .legend-item {
+    padding: 0.4rem 0;
+  }
+
+  .legend-icon {
+    font-size: 1.1rem;
+  }
+
+  .legend-item strong {
+    font-size: 0.85rem;
+  }
+
+  .legend-item span {
+    font-size: 0.7rem;
+  }
+
+  /* 音频详情 */
+  .audio-details {
+    padding: 0.875rem;
+    margin-bottom: 0.875rem;
+  }
+
+  .audio-details h4 {
+    font-size: 0.8rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .detail-row {
+    padding: 0.4rem 0;
+  }
+
+  .detail-row span {
+    font-size: 0.85rem !important;
+  }
+
+  /* 重置按钮 */
+  .reset-button {
+    padding: 0.875rem;
+    font-size: 0.95rem;
+  }
+
+  /* 游戏指南 */
+  .instructions {
+    padding: 1rem;
+  }
+
+  .instructions-header span {
+    font-size: 1.25rem;
+  }
+
+  .instructions-header h3 {
+    font-size: 1rem;
+  }
+
+  .guide-section h4 {
+    font-size: 0.8rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .guide-section li {
+    font-size: 0.8rem;
+    padding-left: 1rem;
+  }
+
+  .guide-item {
+    padding: 0.4rem 0;
+  }
+
+  .color-dot {
+    width: 14px;
+    height: 14px;
+  }
+
+  .guide-item strong {
+    font-size: 0.85rem;
+  }
+
+  .guide-item span {
+    font-size: 0.75rem;
+  }
+
+  /* 分析中状态 */
+  .analyzing {
+    padding: 1.5rem 1rem;
+  }
+
+  .spinner-container {
+    width: 50px;
+    height: 50px;
+  }
+
+  .analyzing p {
+    font-size: 0.95rem;
+  }
+
+  .analyzing-sub {
+    font-size: 0.8rem;
+  }
+
+  /* 错误信息 */
+  .error-message {
+    padding: 0.875rem;
+    font-size: 0.85rem;
+  }
+
+  /* 页脚 */
+  .app-footer {
+    padding: 0.75rem;
+    font-size: 0.75rem;
+  }
+}
+
+/* 小屏手机 */
+@media (max-width: 360px) {
+  .logo-text h1 {
+    font-size: 1.1rem;
+  }
+
+  .scene-container {
+    min-height: 45vh;
+    height: 45vh;
+  }
+
+  .control-panel {
+    padding: 0.75rem;
+  }
+
+  .stat-card {
+    min-width: 70px;
+    padding: 0.6rem;
+  }
+}
+
+/* 横屏手机 */
+@media (max-height: 500px) and (orientation: landscape) {
+  .app-main {
+    flex-direction: row;
+  }
+
+  .scene-container {
+    min-height: auto;
+    height: calc(100vh - 60px - 40px);
+    flex: 1.5;
+  }
+
+  .control-panel {
+    width: 280px;
+    max-height: none;
+    height: calc(100vh - 60px - 40px);
+    border-left: 1px solid rgba(102, 126, 234, 0.2);
+    border-top: none;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* 适配 iPhone 刘海屏 */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .app-header {
+    padding-top: max(0.75rem, env(safe-area-inset-top));
+  }
+
+  .app-footer {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
   }
 }
