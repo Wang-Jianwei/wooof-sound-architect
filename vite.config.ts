@@ -4,7 +4,7 @@ import path from 'path'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/sound-architect/',
+  base: '/wooof-sound-architect/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
