@@ -6,6 +6,7 @@ import { AudioAnalyzer, AudioAnalysisResult } from './utils/AudioAnalyzer';
 import { GardenGenerator, SoundGarden } from './utils/GardenGenerator';
 
 function App() {
+  const VERSION = 'v1.0.1';
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [garden, setGarden] = useState<SoundGarden | null>(null);
   const [analysisResult, setAnalysisResult] = useState<AudioAnalysisResult | null>(null);
@@ -275,7 +276,7 @@ function App() {
       </main>
 
       <footer className="app-footer">
-        <p>Sound Garden © 2024 | React + Three.js + Web Audio API</p>
+        <p>Sound Garden {VERSION} © 2024 | React + Three.js + Web Audio API</p>
       </footer>
     </div>
   );
