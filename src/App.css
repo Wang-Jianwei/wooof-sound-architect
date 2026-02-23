@@ -104,7 +104,7 @@ body {
   50% { opacity: 0.8; transform: scale(1.02); }
 }
 
-.building-badge {
+.garden-badge {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -130,8 +130,8 @@ body {
   gap: 1rem;
 }
 
-/* Building Info */
-.building-info {
+/* Garden Info */
+.garden-info {
   background: linear-gradient(135deg, rgba(30, 30, 63, 0.8) 0%, rgba(45, 45, 90, 0.6) 100%);
   border-radius: 16px;
   padding: 1.5rem;
@@ -148,7 +148,7 @@ body {
   border-bottom: 1px solid rgba(102, 126, 234, 0.2);
 }
 
-.building-icon {
+.garden-icon {
   font-size: 1.75rem;
 }
 
@@ -207,19 +207,54 @@ body {
   color: #fff;
 }
 
-.stat-value.stability-good {
-  color: #4ade80;
-  text-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+/* Plant Legend */
+.plant-legend {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1rem;
 }
 
-.stat-value.stability-medium {
-  color: #fbbf24;
-  text-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+.plant-legend h4 {
+  font-size: 0.9rem;
+  color: #8888aa;
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
-.stat-value.stability-poor {
-  color: #f87171;
-  text-shadow: 0 0 10px rgba(248, 113, 113, 0.5);
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.legend-item:last-child {
+  border-bottom: none;
+}
+
+.legend-icon {
+  font-size: 1.25rem;
+  width: 24px;
+  text-align: center;
+}
+
+.legend-item div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.legend-item strong {
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+.legend-item span {
+  color: #8888aa;
+  font-size: 0.75rem;
 }
 
 /* Audio Details */
@@ -298,10 +333,6 @@ body {
 .reset-button:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
-}
-
-.reset-button:active {
-  transform: translateY(0);
 }
 
 /* Instructions */
@@ -509,20 +540,16 @@ body {
   .app-main {
     flex-direction: column;
   }
-  
+
   .control-panel {
     width: 100%;
     max-height: 45vh;
     border-left: none;
     border-top: 1px solid rgba(102, 126, 234, 0.2);
   }
-  
+
   .scene-container {
     min-height: 55vh;
-  }
-  
-  .stats-grid {
-    grid-template-columns: repeat(3, 1fr);
   }
 }
 
@@ -530,19 +557,19 @@ body {
   .app-header {
     padding: 1rem;
   }
-  
+
   .logo-icon {
     font-size: 2rem;
   }
-  
+
   .logo-text h1 {
     font-size: 1.4rem;
   }
-  
+
   .control-panel {
     padding: 1rem;
   }
-  
+
   .stats-grid {
     grid-template-columns: 1fr;
   }
