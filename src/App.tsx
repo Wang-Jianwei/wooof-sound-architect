@@ -6,7 +6,7 @@ import { AudioAnalyzer, AudioAnalysisResult } from './utils/AudioAnalyzer';
 import { GardenGenerator, SoundGarden } from './utils/GardenGenerator';
 
 function App() {
-  const VERSION = 'v1.0.1';
+  const VERSION = 'v1.0.2';
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [garden, setGarden] = useState<SoundGarden | null>(null);
   const [analysisResult, setAnalysisResult] = useState<AudioAnalysisResult | null>(null);
