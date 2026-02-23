@@ -2,9 +2,19 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 
 interface AudioRecorderProps {
   onRecordingComplete?: (blob: Blob) => void;
+  onRecordingStart?: () => void;
+  onRecordingStop?: () => void;
+  onVolumeChange?: (volume: number) => void;
+  disabled?: boolean;
 }
 
-export default function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
+export default function AudioRecorder({ 
+  onRecordingComplete,
+  onRecordingStart,
+  onRecordingStop,
+  onVolumeChange,
+  disabled = false
+}: AudioRecorderProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [volume, setVolume] = useState(0);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -51,6 +61,8 @@ export default function AudioRecorder({ onRecordingComplete }: AudioRecorderProp
 
   // 开始录音
   const startRecording = async () => {
+    if (disabled) return;
+    
     try {
       // 获取麦克风权限
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -89,6 +101,7 @@ export default function AudioRecorder({ onRecordingComplete }: AudioRecorderProp
       mediaRecorder.start(100); // 每 100ms 收集一次数据
       setIsRecording(true);
       setRecordingTime(0);
+      onRecordingStart?.();
       
       // 启动计时器
       timerRef.current = setInterval(() => {
@@ -112,6 +125,7 @@ export default function AudioRecorder({ onRecordingComplete }: AudioRecorderProp
         const normalizedVolume = Math.min(average / 128, 1); // 归一化到 0-1
         
         setVolume(normalizedVolume);
+        onVolumeChange?.(normalizedVolume);
         animationFrameRef.current = requestAnimationFrame(updateVolume);
       };
       
@@ -131,6 +145,8 @@ export default function AudioRecorder({ onRecordingComplete }: AudioRecorderProp
     cleanup();
     setIsRecording(false);
     setVolume(0);
+    onVolumeChange?.(0);
+    onRecordingStop?.();
   };
 
   // 格式化时间
@@ -142,15 +158,17 @@ export default function AudioRecorder({ onRecordingComplete }: AudioRecorderProp
 
   // 获取音量条颜色
   const getVolumeColor = () => {
-    if (volume < 0.3) return '#4ade80'; // 绿色
-    if (volume < 0.6) return '#fbbf24'; // 黄色
-    return '#ef4444'; // 红色
+    if (volume < 0.3) return '#4ade80'; // 绿色 - 低频
+    if (volume < 0.6) return '#fbbf24'; // 黄色 - 中频
+    return '#3b82f6'; // 蓝色 - 高频
   };
 
   return (
-    <div style={styles.container}>
-      <h3 style={styles.title}>音频录制</h3>
-      
+    <div style={{
+      ...styles.container,
+      opacity: disabled ? 0.5 : 1,
+      pointerEvents: disabled ? 'none' : 'auto',
+    }}>
       {/* 录音时间 */}
       <div style={styles.timeDisplay}>
         {formatTime(recordingTime)}
@@ -186,15 +204,15 @@ export default function AudioRecorder({ onRecordingComplete }: AudioRecorderProp
             onClick={startRecording}
             style={{ ...styles.button, ...styles.startButton }}
           >
-            <span style={styles.buttonIcon}>●</span>
-            开始录音
+            <span style={styles.buttonIcon}>🎤</span>
+            按住录音
           </button>
         ) : (
           <button
             onClick={stopRecording}
             style={{ ...styles.button, ...styles.stopButton }}
           >
-            <span style={styles.buttonIcon}>■</span>
+            <span style={styles.buttonIcon}>⏹</span>
             停止录音
           </button>
         )}
@@ -204,10 +222,10 @@ export default function AudioRecorder({ onRecordingComplete }: AudioRecorderProp
       <div style={styles.status}>
         {isRecording ? (
           <span style={styles.recordingIndicator}>
-            <span style={styles.recordingDot} /> 录音中
+            <span style={styles.recordingDot} /> 正在聆听你的声音...
           </span>
         ) : (
-          <span style={styles.idleStatus}>准备就绪</span>
+          <span style={styles.idleStatus}>点击按钮开始建造</span>
         )}
       </div>
     </div>
@@ -216,29 +234,23 @@ export default function AudioRecorder({ onRecordingComplete }: AudioRecorderProp
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
-    padding: '24px',
-    backgroundColor: '#1f2937',
+    padding: '1.5rem',
+    backgroundColor: '#1a1a2e',
     borderRadius: '12px',
-    maxWidth: '400px',
-    margin: '0 auto',
-    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-  },
-  title: {
-    margin: '0 0 16px 0',
-    color: '#f3f4f6',
-    fontSize: '1.25rem',
-    textAlign: 'center',
+    border: '1px solid #333355',
+    transition: 'opacity 0.2s',
   },
   timeDisplay: {
     fontSize: '2.5rem',
     fontWeight: 'bold',
-    color: '#f3f4f6',
+    color: '#fff',
     textAlign: 'center',
     fontFamily: 'monospace',
-    marginBottom: '16px',
+    marginBottom: '1rem',
+    textShadow: '0 0 20px rgba(102, 126, 234, 0.5)',
   },
   visualizerContainer: {
-    marginBottom: '20px',
+    marginBottom: '1.25rem',
   },
   volumeBars: {
     display: 'flex',
@@ -247,30 +259,33 @@ const styles: Record<string, React.CSSProperties> = {
     gap: '4px',
     height: '80px',
     padding: '10px',
-    backgroundColor: '#111827',
+    backgroundColor: '#0a0a0f',
     borderRadius: '8px',
+    border: '1px solid #222244',
   },
   volumeBar: {
     width: '8px',
     borderRadius: '2px',
-    transition: 'background-color 0.05s ease',
+    transition: 'all 0.05s ease',
   },
   volumeText: {
     textAlign: 'center',
-    color: '#9ca3af',
+    color: '#8888aa',
     fontSize: '0.875rem',
-    marginTop: '8px',
+    marginTop: '0.5rem',
   },
   controls: {
     display: 'flex',
     justifyContent: 'center',
-    marginBottom: '16px',
+    marginBottom: '1rem',
   },
   button: {
     display: 'flex',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: '8px',
-    padding: '12px 24px',
+    width: '100%',
+    padding: '1rem 1.5rem',
     fontSize: '1rem',
     fontWeight: '600',
     border: 'none',
@@ -279,11 +294,11 @@ const styles: Record<string, React.CSSProperties> = {
     transition: 'all 0.2s ease',
   },
   startButton: {
-    backgroundColor: '#dc2626',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
     color: 'white',
   },
   stopButton: {
-    backgroundColor: '#374151',
+    background: 'linear-gradient(135deg, #f87171 0%, #dc2626 100%)',
     color: 'white',
   },
   buttonIcon: {
@@ -297,16 +312,16 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: '6px',
-    color: '#ef4444',
+    color: '#f87171',
   },
   recordingDot: {
     width: '8px',
     height: '8px',
-    backgroundColor: '#ef4444',
+    backgroundColor: '#f87171',
     borderRadius: '50%',
     animation: 'pulse 1s infinite',
   },
   idleStatus: {
-    color: '#9ca3af',
+    color: '#666688',
   },
 };

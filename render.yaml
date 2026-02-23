@@ -1,0 +1,6 @@
+services:
+  - type: static
+    name: sound-architect
+    env: static
+    buildCommand: ""
+    staticPublishPath: ./dist
